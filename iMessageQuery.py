@@ -1,7 +1,17 @@
 import sqlite3
-# A random comment
+import json
+from argparse import ArgumentParser
+import os
 
-def run_sqlite_query(database_path):
+
+def parse_arguments():
+    parser = ArgumentParser(description="A tool to extract data from the chat.db file")
+    parser.add_argument("-f", "--file", dest="database_path", required=True, help="Path to the chat.db file")
+    parser.add_argument("-o", "--output", dest="output_dir", help="Path to the output directory")
+    return parser.parse_args()
+
+
+def run_sqlite_query(database_path, output_dir):
     try:
         # Connect to the SQLite database
         connection = sqlite3.connect(database_path)
@@ -41,14 +51,28 @@ def run_sqlite_query(database_path):
         # Fetch all rows from the result set
         rows = cursor.fetchall()
 
-        # Print the results with specified format
+        # Construct a list of dictionaries representing each row
+        result_list = []
         for row in rows:
-            print("From:     ", row[3])  # From
-            print("To:       ", row[4])  # To
-            print("Service:  ", row[5])  # Service
-            print("Date:     ", row[6])  # TextDate
-            print("Message:  ", row[7])  # MessageText
-            print()  # Empty line for separation
+            result_dict = {
+                "From": row[3],
+                "To": row[4],
+                "Service": row[5],
+                "Date": row[6],
+                "Message": row[7]
+            }
+            result_list.append(result_dict)
+
+        # Determine the output file path
+        output_file = "output.json"
+        if output_dir:
+            output_file = output_dir
+
+        # Dump the list into a JSON file
+        with open(output_file, "w") as json_file:
+            json.dump(result_list, json_file, indent=4)
+
+        print("Query results have been saved to:", output_file)
 
     except sqlite3.Error as e:
         print("SQLite error:", e)
@@ -58,14 +82,15 @@ def run_sqlite_query(database_path):
         if connection:
             connection.close()
 
+
 # Main function
 def main():
-    # Get user input for the path to the SQLite database file
-    database_path = input("Enter the path to the SQLite database file: ")
+    # Parse command line arguments
+    args = parse_arguments()
 
     # Run the SQLite query
-    run_sqlite_query(database_path)
+    run_sqlite_query(args.database_path, args.output_dir)
+
 
 if __name__ == "__main__":
     main()
-    
