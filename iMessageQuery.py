@@ -28,7 +28,11 @@ def run_sqlite_query(database_path, output_dir):
                 m.service AS Service,
                 DATETIME((m.date / 1000000000) + 978307200, 'unixepoch', 'localtime') AS TextDate,
                 m.text AS MessageText,
-                c.display_name AS RoomName
+                c.display_name AS RoomName,
+                a.filename AS att_path,
+                a.mime_type AS att_mime_type,
+                a.transfer_name AS att_name,
+                a.total_bytes AS att_size
             FROM 
                 message AS m
             LEFT JOIN 
@@ -39,6 +43,10 @@ def run_sqlite_query(database_path, output_dir):
                 chat_handle_join AS ch ON c.rowid = ch.chat_id
             LEFT JOIN 
                 handle AS h2 ON ch.handle_id = h2.rowid
+            LEFT JOIN
+                message_attachment_join AS ma ON ma.message_id = m.rowid
+            LEFT JOIN
+                attachment AS a ON a.rowid = ma.attachment_id    
             WHERE
                 (h2.service IS NULL OR m.service = h2.service)
             ORDER BY
@@ -59,7 +67,13 @@ def run_sqlite_query(database_path, output_dir):
                 "To": row[4],
                 "Service": row[5],
                 "Date": row[6],
-                "Message": row[7]
+                "Message": row[7],
+                "Attachment": {
+                    "Path": row[9],
+                    "MimeType": row[10],
+                    "Name": row[11],
+                    "Size": row[12]
+                } if row[9] else None
             }
             result_list.append(result_dict)
 
