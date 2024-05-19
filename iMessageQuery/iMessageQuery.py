@@ -1,7 +1,6 @@
 import sqlite3
 import json
 from argparse import ArgumentParser
-import os
 
 
 def parse_arguments():
