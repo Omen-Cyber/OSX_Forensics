@@ -9,5 +9,5 @@ Currently has options for db, plist, and ips files
 Run the script passing -h for help, you can pass it ~/Path/to or /Full/Path/to
 
 ```shell
-python3 file_scraper.py -f ~/path/to -t (db,plist,ips) -o output_file 
+python3 file_scraper.py -d ~/path/to -t (db,plist,ips) -o output_file 
 ```
