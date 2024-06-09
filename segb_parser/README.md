@@ -1,14 +1,8 @@
 # Description
 
-This tool currently parses SEGBv2 files and outputs the data in json format.
-
-## How To Use
 
 ### Install requirements.txt
 
-```shell
-pip install -r requirements.txt 
-```
 
 ### Run the script
 
