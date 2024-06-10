@@ -1,13 +1,19 @@
 # Description
 
-## A tool that extracts files within a directory and its subdirectories
+## A tool for extracting OSX files containing artifacts.
 
-Currently has options for db, plist, and ips files
+Currently has options for db, plist, ips, and segb files.
 
 ## How To Use
 
-Run the script passing -h for help, you can pass it ~/Path/to or /Full/Path/to
+### Run the script
+
+-d, (--directory) and -t, (--file-type) are required arguments
+
+Pass a file type (db, plist, ips, segb) as an argument
 
 ```shell
-python3 file_scraper.py -d ~/path/to -t (db,plist,ips) -o output_file 
+python file_scraper.py -d /Path/to/input_dir -t {file_type} -o /Path/to/output_file
 ```
+
+#### For parsing data please refer to the parsing tools tailored to the file type.
