@@ -1,4 +1,5 @@
 import argparse
+import os
 import pathlib
 import sys
 import json
@@ -50,7 +51,13 @@ class BinaryReader:
         return struct.unpack("<i", raw)[0]
 
     def read_uint32(self) -> int:
-        return struct.unpack("<I", self.read_raw(4))[0]
+        """
+        Reads an unsigned 32-bit integer from the binary stream.
+        
+        Returns:
+            int: The unsigned 32-bit integer read from the stream.
+        """
+        return struct.unpack("<I", self.read_raw(4))[0] 
 
     def read_uint64(self) -> int:
         return struct.unpack("<Q", self.read_raw(8))[0]
@@ -66,8 +73,10 @@ class BinaryReader:
 
 
 class Cookies:
-    def __init__(self, file_path):
-        self.file_path = file_path
+    def __init__(self, file_path, output_file, format):
+        self.file_path = pathlib.Path(file_path) if isinstance(file_path, str) else file_path
+        self.output_file = pathlib.Path(output_file) if isinstance(output_file, str) else output_file
+        self.format = format
         self.page_sizes = []
         self.total_cookies = 0
         self.all_pages = []  # To store detailed info about each page
@@ -194,37 +203,59 @@ class Cookies:
             print(f"\nPage: {page['Page Num']} of {page_len}")
             print(f"Size: {page['Size']}")
             print(f"Cookies: {page['# of Cookies']}")
-
+    
+    
     def json_format(self):
-        # Export the parsed data to a JSON file
-        output_file = pathlib.Path(args.o) / 'parsed_cookies.json'
-        with open(output_file, 'w') as json_file:
-            json.dump(self.all_pages, json_file, indent=4)
+        # Ensure the output directory exists
+        if not self.output_file.parent.exists():
+            os.makedirs(self.output_file.parent)
 
+        # Export the parsed data to a JSON file
+        if self.format == 'json':
+            self.output_file = self.output_file.with_suffix('.json')
+            with open(self.output_file, 'w') as json_file:
+                json.dump(self.all_pages, json_file, indent=4)
+        else:
+            self.output_file = self.output_file.with_suffix('.txt')
+            with open(self.output_file, 'w') as txt_file:
+                page_len = len(self.all_pages)
+                for page in self.all_pages:
+                    txt_file.write(f"\nPage: {page['Page Num']} of {page_len}")
+                    txt_file.write(f"Size: {page['Size']}")
+                    txt_file.write(f"Cookies: {page['# of Cookies']}")
+                    for cookie in page['Cookie Data']:
+                        txt_file.write(f"\nDomain: {cookie['domain']}")
+                        txt_file.write(f"Name: {cookie['name']}")
+                        txt_file.write(f"Path: {cookie['path']}")
+                        txt_file.write(f"Value: {cookie['value']}")
+                        txt_file.write(f"Created: {cookie['created']}")
+                        txt_file.write(f"Expires: {cookie['expires']}")
+                        txt_file.write(f"Flags: {cookie['flags']}")
+                        
+    def __str__(self):
+        
+        str_output = (
+        f"\nMagic number: {self._Magic}"
+        f"\nNumber of pages: {len(self.page_sizes)}"
+        f"\nTotal size of pages: {sum(self.page_sizes)}"
+        f"\nTotal Cookies: {self.total_cookies}"
+        f"\nInput file: {self.file_path}"
+        f"\nOutput file: {self.output_file}"
+        )
+        return str_output
 
 def main(args):
     input_path = pathlib.Path(args.i)
-    output_path = pathlib.Path(args.o) 
-    format = args.f
-    cook = Cookies(input_path)
+    output_path = pathlib.Path(args.o)
     
-    if not output_path.exists():
-        output_path.mkdir()
-    else:
-        print("Output directory already exists. Contents will be overwritten.")
-        sys.exit(1)
-        
-    print(f"\n\nInput file: {input_path}")
-    print(f"Output directory: {output_path.resolve()}")
+    # Ensure the directory exists before creating the file
+    if not output_path.parent.exists():
+        os.makedirs(output_path.parent)
     
-    if format == 'json':
-        print(f"Output file: {output_path / 'parsed_cookies.json'} ")
-        print(f"Output format: {format}")
-        cook.json_format()
-    else:
-        print(f"Output file: {output_path / 'parsed_cookies.txt'} ")
-        cook
-
+    Cookies(input_path, output_path, args.f)
+    
+    """ print(f"\n\nInput file: {input_path}")
+    print(f"Output directory: {output_path.resolve()}") """
 
 if __name__ == "__main__":
     try:
