@@ -29,24 +29,76 @@ class Magic:
 
 class BinaryReader:
     def __init__(self, stream: Union[BinaryIO, bytes]):
+        """
+        Initializes a new instance of the BinaryReader class.
+
+        Args:
+            stream (Union[BinaryIO, bytes]): The input stream to read from, which can be either a BinaryIO object or a bytes object.
+
+        Returns:
+            None
+        """
         self.b_stream = io.BytesIO(stream) if isinstance(stream, bytes) else stream
 
     def seek(self, offset, whence=io.SEEK_SET):
+        """
+        Seeks the binary stream to the specified offset.
+
+        Args:
+            offset (int): The offset to seek to.
+            whence (int, optional): The reference point for the offset. Defaults to io.SEEK_SET.
+
+        Returns:
+            int: The new position of the stream.
+        """
         return self.b_stream.seek(offset, whence)
 
     def tell(self):
+        """
+        Returns the current position of the binary stream.
+
+        Returns:
+            int: The current position of the binary stream.
+        """
         return self.b_stream.tell()
 
     def read_raw(self, count):
+        """
+        Reads raw binary data from the underlying stream.
+
+        Args:
+            count (int): The number of bytes to read from the stream.
+
+        Returns:
+            bytes: The raw binary data read from the stream.
+
+        Raises:
+            ValueError: If the number of bytes read does not match the expected count.
+        """
         result = self.b_stream.read(count)
         if len(result) != count:
             raise ValueError(f"Could not read expected bytes: {count}, got {len(result)} for {result}")
         return result
 
     def read_int32(self) -> int:
+        """
+        Reads a signed 32-bit integer from the binary stream.
+
+        Returns:
+            int: The signed 32-bit integer read from the stream.
+        """
         return struct.unpack(">i", self.read_raw(4))[0]
     
     def read2_int32(self) -> int:
+        """
+        Reads a signed 32-bit integer from the binary stream.
+
+        Args:
+            None
+
+        Returns:
+            int: The signed 32-bit integer read from the stream.
+        """
         raw = self.read_raw(4)
         return struct.unpack("<i", raw)[0]
 
@@ -60,6 +112,12 @@ class BinaryReader:
         return struct.unpack("<I", self.read_raw(4))[0] 
 
     def read_uint64(self) -> int:
+        """
+        Reads an unsigned 64-bit integer from the binary stream.
+
+        Returns:
+            int: The unsigned 64-bit integer read from the stream.
+        """
         return struct.unpack("<Q", self.read_raw(8))[0]
 
     def read_datetime(self) -> str:
@@ -80,20 +138,39 @@ class Cookies:
         self.page_sizes = []
         self.total_cookies = 0
         self.all_pages = []  # To store detailed info about each page
+        self._strings = []
         with open(self.file_path, 'rb') as file:
             self.br = BinaryReader(file)
             self._read_file()
 
     def _read_file(self):
+        """
+        Reads a binary cookies file and extracts relevant information.
+
+        This function reads the magic number, number of pages, page sizes, and each page's data.
+        It then processes each page, extracts the total number of cookies, and appends various strings to the _strings list.
+        Finally, it prints the values, formats the output as JSON, and prints the joined strings.
+
+        Parameters:
+            None
+
+        Returns:
+            None
+        """
         # Read magic number
         self._Magic = self.br.read_uint32()
         if self._Magic != Magic._Magic:
             raise ValueError("Not a valid Cookies.binarycookies file")
-        print(f"Magic number: {self._Magic}")
+        
+        str = ""
+        
+        str = f"\nMagic number: {self._Magic}"
+        self._strings.append(str)
 
         # Read number of pages
         num_pages = self.br.read_int32()
-        print(f"Number of pages: {num_pages}")
+        str = f"Number of pages: {num_pages}"
+        self._strings.append(str)
 
         # Read page sizes
         total_page_size = 0
@@ -102,18 +179,37 @@ class Cookies:
             self.page_sizes.append(page_size)
             total_page_size += page_size
 
-        print(f"Total size of pages: {total_page_size}")
+        str = f"Total size of pages: {total_page_size}"
+        self._strings.append(str)
 
         # Read each page            
         pages = [self.br.read_raw(page_size) for page_size in self.page_sizes]
         for page_num, page_data in enumerate(pages, 1):
             self._process_page(page_data, page_num)
 
-        print(f"Total Cookies: {self.total_cookies}")
+        str = f"Total Cookies: {self.total_cookies}"
+        self._strings.append(str)
+        str = f"Input file: {self.file_path}"
+        self._strings.append(str)
+        str = f"Output file: {self.output_file}\n"
+        self._strings.append(str)
         self._print_values()
         self.json_format()
+        print("\n".join(self._strings))
+        
+        
 
     def _process_page(self, page_data, page_num):
+        """
+        Process a single page of cookie data.
+
+        Parameters:
+            page_data (bytes): The raw page data.
+            page_num (int): The page number.
+
+        Returns:
+            None
+        """
         page = BytesIO(page_data)
         br_page = BinaryReader(page)
         br_page.read2_int32()  # Skip page header
@@ -186,6 +282,16 @@ class Cookies:
 
     # Function to read string values from the binarycookies file
     def _read_string(self, cookie, offset):
+        """
+        Reads a string value from a binarycookies file at the specified offset.
+
+        Args:
+            cookie (BytesIO): The binarycookies file to read from.
+            offset (int): The offset at which to start reading the string.
+
+        Returns:
+            str: The decoded string value.
+        """
         cookie.seek(offset - 4)
         result = b""
         while True:
@@ -196,8 +302,16 @@ class Cookies:
         return result.decode('utf-8')
 
 
-    # Print a summary of the parsed data
     def _print_values(self):
+        """
+        Prints a summary of the parsed data, including page numbers, sizes, and cookie counts.
+
+        Parameters:
+            None
+
+        Returns:
+            None
+        """
         page_len = len(self.all_pages)
         for page in self.all_pages:
             print(f"\nPage: {page['Page Num']} of {page_len}")
@@ -206,13 +320,22 @@ class Cookies:
     
     
     def json_format(self):
+        """
+        Exports the parsed data to a JSON or text file based on the specified format.
+
+        Parameters:
+            None
+
+        Returns:
+            None
+        """
         # Ensure the output directory exists
-        if not self.output_file.parent.exists():
-            os.makedirs(self.output_file.parent)
+        if not self.output_file.exists():
+            os.makedirs(self.output_file)
 
         # Export the parsed data to a JSON file
         if self.format == 'json':
-            self.output_file = self.output_file.with_suffix('.json')
+            self.output_file = self.output_file / 'parsed_cookies.json'
             with open(self.output_file, 'w') as json_file:
                 json.dump(self.all_pages, json_file, indent=4)
         else:
@@ -231,20 +354,22 @@ class Cookies:
                         txt_file.write(f"Created: {cookie['created']}")
                         txt_file.write(f"Expires: {cookie['expires']}")
                         txt_file.write(f"Flags: {cookie['flags']}")
-                        
-    def __str__(self):
-        
-        str_output = (
-        f"\nMagic number: {self._Magic}"
-        f"\nNumber of pages: {len(self.page_sizes)}"
-        f"\nTotal size of pages: {sum(self.page_sizes)}"
-        f"\nTotal Cookies: {self.total_cookies}"
-        f"\nInput file: {self.file_path}"
-        f"\nOutput file: {self.output_file}"
-        )
-        return str_output
+    
+    
+    
 
 def main(args):
+    """
+    The main entry point of the program. It takes in command line arguments, 
+    constructs input and output file paths, ensures the output directory exists, 
+    and calls the Cookies function to perform the main task.
+
+    Parameters:
+        args (object): Command line arguments containing input file path, output file path, and format.
+
+    Returns:
+        None
+    """
     input_path = pathlib.Path(args.i)
     output_path = pathlib.Path(args.o)
     
@@ -254,8 +379,6 @@ def main(args):
     
     Cookies(input_path, output_path, args.f)
     
-    """ print(f"\n\nInput file: {input_path}")
-    print(f"Output directory: {output_path.resolve()}") """
 
 if __name__ == "__main__":
     try:
